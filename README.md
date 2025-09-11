@@ -29,6 +29,10 @@ Check [its wiki page](https://github.com/makamys/MCLib/wiki/AssetDirector) for m
 
 To enable incomplete test features, add `-Detfuturum.testing=true` to your JVM arguments. This also enables a debug item
 
+### Fork Synchronization
+
+If you're maintaining a fork of this repository, see [FORK_SYNC.md](FORK_SYNC.md) for detailed instructions on how to properly sync your fork with the upstream repository using GitHub CLI or Git commands.
+
 ## Contributors
 <a href="https://github.com/Roadhog360/Et-Futurum-Requiem/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Roadhog360/Et-Futurum-Requiem" />

@@ -1,0 +1,87 @@
+name: Sync Fork with Upstream
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to sync (default: master)'
+        required: false
+        default: 'master'
+      force_sync:
+        description: 'Force sync (use with caution)'
+        required: false
+        default: 'false'
+        type: boolean
+  schedule:
+    # Run weekly on Sundays at midnight UTC
+    - cron: '0 0 * * 0'
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/Roadhog360/Et-Futurum-Requiem.git || true
+          git fetch upstream
+
+      - name: Sync master branch
+        run: |
+          BRANCH="${{ inputs.target_branch || 'master' }}"
+          FORCE="${{ inputs.force_sync || false }}"
+          
+          echo "Syncing branch: $BRANCH"
+          echo "Force sync: $FORCE"
+          
+          # Switch to target branch
+          git checkout $BRANCH
+          
+          # Check if we need to sync
+          BEHIND=$(git rev-list --count HEAD..upstream/$BRANCH)
+          echo "Current branch is $BEHIND commits behind upstream"
+          
+          if [ "$BEHIND" -gt 0 ] || [ "$FORCE" = "true" ]; then
+            if [ "$FORCE" = "true" ]; then
+              echo "Force syncing branch $BRANCH"
+              git reset --hard upstream/$BRANCH
+            else
+              echo "Merging upstream changes into $BRANCH"
+              git merge upstream/$BRANCH
+            fi
+            
+            # Push changes
+            git push origin $BRANCH
+            echo "Successfully synced $BRANCH branch"
+          else
+            echo "Branch $BRANCH is already up to date"
+          fi
+
+      - name: Create PR for other branches (if master was synced)
+        if: ${{ (inputs.target_branch == 'master' || inputs.target_branch == '') && success() }}
+        run: |
+          # List branches that might need syncing
+          BRANCHES=$(git branch -r | grep "origin/upstream-pr-" | sed 's/origin\///' | head -5)
+          
+          if [ -n "$BRANCHES" ]; then
+            echo "Found upstream-pr branches that might need syncing:"
+            echo "$BRANCHES"
+            echo ""
+            echo "To sync these branches, you can:"
+            echo "1. Run this workflow manually with the specific branch name"
+            echo "2. Use the commands from FORK_SYNC.md"
+            echo ""
+            echo "Example: gh workflow run 'Sync Fork with Upstream' --field target_branch=upstream-pr-3"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
